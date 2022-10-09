@@ -1,12 +1,33 @@
-FROM alpine:3.8
+FROM node:alpine as base
 
-# This Dockerfile is optimized for go binaries, change it as much as necessary
-# for your language of choice.
+WORKDIR /usr/app
 
-RUN apk --no-cache add ca-certificates=20190108-r0 libc6-compat=1.1.19-r10
+RUN apk update && apk add libstdc++ && apk add build-base && apk add bash
+
+COPY package*.json ./
+COPY tsconfig.json ./
+RUN npm ci
+COPY ./src ./src
+RUN npm run build
 
 EXPOSE 9091
 
-COPY car-pooling-challenge /
- 
-ENTRYPOINT [ "/car-pooling-challenge" ]
+
+FROM node:alpine as production
+
+WORKDIR /usr/app
+RUN apk update && apk add libstdc++ && apk add build-base && apk add bash
+
+COPY --from=base /usr/app/dist ./dist
+
+COPY package*.json ./
+RUN npm i --omit=dev
+
+EXPOSE 9091
+
+CMD npm start
+
+
+FROM base as dev
+
+CMD npm run dev

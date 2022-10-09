@@ -218,3 +218,87 @@ following survey:
 - https://forms.gle/EzPeURspTCLG1q9T7
 
 Your participation is really important. Thanks for your contribution!
+
+## Car Pooling Challenge Explanation
+
+**Framework and languages**
+
+- NodeJS / TypeScript
+- Express
+- Jest and supertest (testing)
+- K6 (performance testing)
+
+**Methodology and architecture**
+
+The whole challenge was designed with clean architecture pattern and TDD methodology following Red-Green-Refactoring approach.
+Each feature was developed starting with a new git branch named *feature/nameOfFeature* created from the *develop* branch and then merged with it when the feature was finished.
+
+**Process**
+
+I separated the API in 5 main layers:
+
+ - Controllers
+ - Usecases
+ - Repositories
+ - Data
+ - Domain (which contain Entities and Usecases)
+
+Each of them, except domain, contain 3 "modules" :
+
+ - Cars - add, find cars
+ - journey - join, find or delete a group with a car
+ - waitingList - keep groups that can't join a car
+
+The application is "Usecase" centric. All the requested features were developed by  defining the usecase and writing his Unit Test with Jest. 
+Then I created repositories to connect  usecases to the datasources.
+Finally, Controllers were developed to be able to send and retrieve data trough a REST API.
+
+When all the project was tested and completed, I performed a spike-test using k6.
+
+**Performance**
+
+Here is the 3 steps of the test: 
+
+ - put 50.000 cars
+ 
+ Then virtual users: 
+
+ - Start a journey
+ - Locate a group
+ - Drop Off a group
+
+The test loop from 0 to 4000 virtuals user during 2min. 
+Key results are:
+
+ - Total requests **~200.000**
+ - Avg req duration (from request to response) **~20ms**
+ - **99%** of requests take **<1s**
+ - **100%  200 status response** from the 3 endpoints
+ - 
+(You will find a screenshot of the test in the spike-test folder)
+
+To be able to handle a lot of data, I saved all  dataSource in Javascript Map object. 
+Cars are grouped by free seats  and Groups in waitingList by people.
+Journey is a Map with group ID as key and a Map containing CarEntity (key car) and GroupEntity (key group)
+Cars and Groups can be found directly by the number of needed seats.
+When a group start a journey, I search for the first car in the Map getted by the number of people in the group.
+When a group stop his journey,  I get the Map(car,group) thanks to the ID of the dropedOff Group.
+With that information I can quickly get the Car from his DataMap and  add the number of leaving people to his freeSeats then search in the waitingList to complete the car with 1 or more groups.
+
+## Launch the project
+
+You can launch the project with
+
+    npm run dev
+    
+    or 
+    
+    npm run docker:build:dev || npm run docker:build:prod
+    npm run docker:run:dev || npm run docker:run:prod
+    
+To run the spike-test you need to install k6 [k6-installation-link](https://k6.io/docs/getting-started/installation/)
+
+Then
+
+    cd spike-test
+    k6 run script.js
